@@ -1,0 +1,192 @@
+<script>
+  $(function() {
+    const apps = new Vue({
+      el: '#app',
+      data: {
+        debug: false,
+        rows: [],
+        row: [],
+        email: <?= data.email || ''?>,
+        logined: false,
+        password: '123',
+        prices:{},
+        logining:false,
+        login_error:'',
+        chartLabel: 'Trending display',
+        chartData: [],
+        chartLabels: []
+      },
+      mounted: function() {
+        this.login_mock();
+        this.prefill_email();
+        //this.login();
+      },      
+      methods: {
+        prefill_email(){
+        },
+        log: function() {
+          console.log(arguments);
+        },
+        login: function() {
+          if(this.password == '') {
+            this.login_error = 'Password cannot be empty.';
+          } else if (this.email == '')
+            this.login_error = 'Email cannot be empty.';
+          else {
+            this.logining = true;
+            google.script.run.withSuccessHandler(this.login_cb).login(this.email, this.password);
+          }
+        },
+        login_cb(r) {
+          if(r !== false) {
+            var data = JSON.parse(r);
+            this.logined = data.email;
+            this.rows = data.rows;
+            this.prices = data.prices;
+            this.set_row(this.rows[0]);
+          } else {
+            this.login_error = 'Email/password combination not found.';
+          }
+          this.logining = false;
+        },
+        login_mock() {
+          var o = {"email":"krupod@gmail.com","rows":[{"Password":123,"Client Rep.":"KG","Client Rep 2":"PEC, KG","Share #":1,"Client":"XXX aps","Infomation":"krupod@gmail.com","ID Number":"XXXXXXXX","PL":1002083.2791999994,"PL %":0.33402777968592584,"Share Class":"A","Date #1":"2018-06-01T07:00:00.000Z","Nominal Value 1":500000,"NAV 1":200,"Date #2":"2018-07-20T07:00:00.000Z","Nominal Value 2":500000,"NAV 2":200,"Date #3":"2018-09-04T07:00:00.000Z","Nominal Value 3":482253,"NAV 3":207.36,"Date #4":"","Nominal Value 4":"","NAV 4":"","Acc Nominal Value":1482253,"Avg. NAV":202.3945858635469,"aktie kapital":2999999.8208,"Current Value":4002083.1},{"Password":123,"Client Rep.":"KG","Client Rep 2":"PEC, KG","Share #":2,"Client":"XXX aps","Infomation":"krupod@gmail.com","ID Number":"XXXXXXXX","PL":-135000,"PL %":-0.28421052631578947,"Share Class":"B","Date #1":"2018-06-01T07:00:00.000Z","Nominal Value 1":100000,"NAV 1":200,"Date #2":"2018-07-20T07:00:00.000Z","Nominal Value 2":50000,"NAV 2":250,"Date #3":"2018-09-04T07:00:00.000Z","Nominal Value 3":50000,"NAV 3":300,"Date #4":"","Nominal Value 4":"","NAV 4":"","Acc Nominal Value":200000,"Avg. NAV":237.5,"aktie kapital":475000,"Current Value":340000}],"prices":{"Date":["2018-05-01T07:00:00.000Z","2018-06-01T07:00:00.000Z","2018-07-01T07:00:00.000Z","2018-08-01T07:00:00.000Z","2018-09-01T07:00:00.000Z","2018-10-01T07:00:00.000Z","2018-11-01T07:00:00.000Z","2018-12-01T08:00:00.000Z","2019-01-01T08:00:00.000Z","2019-02-01T08:00:00.000Z","2019-03-01T08:00:00.000Z","2019-04-01T07:00:00.000Z","2019-05-01T07:00:00.000Z","2019-06-01T07:00:00.000Z","2019-07-01T07:00:00.000Z","2019-08-01T07:00:00.000Z","2019-09-01T07:00:00.000Z","2019-10-01T07:00:00.000Z","2019-11-01T07:00:00.000Z","2019-12-01T08:00:00.000Z","2020-01-01T08:00:00.000Z","2020-02-01T08:00:00.000Z","2020-03-01T08:00:00.000Z","2020-04-01T07:00:00.000Z","2020-05-01T07:00:00.000Z","2020-06-01T07:00:00.000Z","2020-07-01T07:00:00.000Z"],"A":[30,40,50,100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,280,290,300,310,290,270],"B":[55,60,65,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,205,180,170]}};
+          this.login_cb(JSON.stringify(o))
+        },
+        set_row(row) {
+          this.row = row;
+          var chartData = this.calculateChartData();
+          _.keys(chartData).map(key => drawChart(key, chartData[key].title, chartData[key].labels, chartData[key].data));
+        },
+        calculateChartData() {
+          var dates = this.prices['Date'].map(date_str => new Date(Date.parse(date_str)));
+          var purchases = [1,2,3,4].filter(i => this.row['Date #' + i] != '').map(i => { return {
+              date:new Date(Date.parse(this.row['Date #' + i])),
+              amount:this.row['Nominal Value ' + i],
+              price:this.row['NAV ' + i],
+            }
+          });
+          console.log(purchases);
+
+          var data = {dates, prices: this.prices[this.row['Share Class']], total_shares: Array(dates.length).fill(0), invested: Array(dates.length).fill(0), networth: Array(dates.length).fill(0), pl: Array(dates.length).fill(0), pl_pc: Array(dates.length).fill(0)};
+          for(i=1;i<dates.length;i++) {            
+            ['total_shares', 'invested', 'networth', 'pl', 'pl_pc'].map(stat => data[stat][i] = data[stat][i-1]);
+            
+            purchases.filter(purchase => sameMonth(dates[i], purchase.date)).map(purchase => { 
+                data.total_shares[i] += purchase.amount;
+                data.invested[i] += purchase.amount * purchase.price/100;
+//                data.invested[i] += purchase.amount * purchase.price;
+                console.log('pcl', purchase.amount, purchase.price, data.prices[i]/100)
+            } );
+            
+            data.networth[i] = data.total_shares[i] * data.prices[i]/100;
+            data.pl[i] = data.networth[i] - data.invested[i];
+            data.pl_pc[i] = Math.floor(data.pl[i]/data.invested[i]*10000)/100;
+            
+          }
+          var slice = 0;
+          while(slice < dates.length && data.total_shares[slice] == 0) slice++;
+          data = _.mapValues(data, o => o.slice(slice));
+          
+          console.log(data);
+          
+          var formatDateGraph = d => d2(d.getMonth()+1)  + '-' + (d.getYear()-100);
+          
+          return {
+            "shares" : {
+              title: "Share NAV",
+              labels: data.dates.map(formatDateGraph),
+              data: data.prices
+            },
+/*            
+            "total_shares" : {
+              title: "Total Share(Nominal Value)",
+              labels: data.dates.map(formatDateGraph),
+              data: data.total_shares
+            },
+            "invested" : {
+              title: "Total Amount Invested",
+              labels: data.dates.map(formatDateGraph),
+              data: data.invested
+            },
+            "networth" : {
+              title: "Current Market Price",
+              labels: data.dates.map(formatDateGraph),
+              data: data.networth
+            },
+*/
+            "pl" : {
+              title: "PL",
+              labels: data.dates.map(formatDateGraph),
+              data: data.pl
+            },
+            "pl_pc" : {
+              title: "PL %",
+              labels: data.dates.map(formatDateGraph),
+              data: data.pl_pc
+            },
+          }
+        },
+        logout() {
+          this.logined = false;
+          this.login_error = '';
+          this.password = '';
+        },
+      }, 
+    filters: {
+      round: function (value) {
+        return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+      },
+      round2: function (value) {
+        return (Math.round(value*100)/100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+      },
+      formatDate(val) {
+        d = val instanceof Date ? val : new Date(Date.parse(val));
+        return [d2(d.getDate()), d2(d.getMonth() + 1), d.getFullYear()].join('/');
+      }      
+    },      
+    computed: {
+      combinedPL() {
+        return _.chain(this.rows).map('PL').sum().value();
+      }
+    }
+   });
+    
+ });    
+
+function d2(v){ return (v < 10? '0' : '') + v};
+
+function sameMonth(d1, d2){
+  return d1.getFullYear() == d2.getFullYear() &&  d1.getMonth() == d2.getMonth() ;
+}
+
+function drawChart(id, label, labels, data){
+  var chart = document.getElementById(id);
+  if(chart) {
+  var ctx = chart.getContext('2d');
+  var chart = new Chart(ctx, {
+      // The type of chart we want to create
+      type: 'line',
+  
+      // The data for our dataset
+      data: {
+          labels,
+          datasets: [{
+              label,
+              backgroundColor: 'rgb(0,0,0)',
+              borderColor: 'rgb(50,50,50)',
+              data
+          }]
+      },
+  
+      // Configuration options go here
+      options: {}
+  });
+  } else 
+    setTimeout(() => drawChart.apply(null, arguments), 100);
+}
+
+
+</script>
+
+

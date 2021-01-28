@@ -1,0 +1,65 @@
+<div id="main">
+  <div id='info'>
+    <div id="logo">
+      <div>{{logined}}</div>
+      <div> <img src="https://drive.google.com/uc?export=view&id=1RBU6K9KLdC3oDPN0AIXYUTQaVN2j4gnW" width=150> </div>
+      <input type=button @click='logout' value="Logout">
+    </div>
+    <div id=totals>
+      <div>Number of shares: {{row['Acc Nominal Value'] | round}}</div>
+      <div>Total Value: {{row['Current Value']| round}}</div>
+      <div>Total PL: {{row['PL']| round}}</div>
+      <div>Total % PL: {{row['PL %']*100 | round2}} %</div>
+    </div>
+    <br/>
+    <div>
+      <b>Latest transactions</b>
+    <hr>
+    </div>
+    
+    <div id=transactions>
+      <div class=transaction v-show="row['Date #1']">
+        <div>Date: {{ row['Date #1'] | formatDate}} </div>
+        <div>Number of shares: {{ row['Nominal Value 1'] |round}} </div>
+        <div>NAV/per 100 shares: {{ row['NAV 1'] }} </div>
+      </div>
+      <div class=transaction v-show="row['Date #2']">
+        <div>Date: {{ row['Date #2'] | formatDate}} </div>
+        <div>Number of shares: {{ row['Nominal Value 2'] |round}} </div>
+        <div>NAV/per 100 shares: {{ row['NAV 2'] }} </div>
+      </div>
+      <div class=transaction v-show="row['Date #3']">
+        <div>Date: {{ row['Date #3'] | formatDate}} </div>
+        <div>Number of shares: {{ row['Nominal Value 3'] |round }} </div>
+        <div>NAV/per 100 shares: {{ row['NAV 3'] }} </div>
+      </div>
+      <div class=transaction v-show="row['Date #4']">
+        <div>Date: {{ row['Date #4'] | formatDate}} </div>
+        <div>Number of shares: {{ row['Nominal Value 4'] |round}} </div>
+        <div>NAV/per 100 shares: {{ row['NAV 4'] }} </div>
+      </div>
+    </div>
+  </div> <!-- #info -->
+  
+  <div id='graph'>
+    <div id='share-class'>    
+      <div id='share-class-caption'> Select Share Class </div>
+      <div class='share-button-container'>
+        <input type=button v-model="item['Share Class']"  v-for='item in rows' @click='set_row(item)'>
+      </div>
+    </div>
+  
+    <div id="chart-container">
+      <canvas id=shares class="chart"></canvas>
+      <canvas id=total_shares class="chart" v-show=0></canvas>
+      <canvas id=invested class="chart" v-show=0></canvas>
+      <canvas id=networth class="chart" v-show=0></canvas>
+      <canvas id=pl class="chart"></canvas>
+      <canvas id=pl_pc class="chart"></canvas>
+    </div>
+    
+    <div class="transaction" v-if='rows.length>1'> Combined PL for all shares: {{combinedPL | round}}</div>
+
+  </div> <!-- #graph -->
+
+</div> <!-- #main -->

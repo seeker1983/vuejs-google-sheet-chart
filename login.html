@@ -1,0 +1,9 @@
+<div id="login">
+  <!-- Login Form -->
+  <form v-on:submit.prevent="login">
+    <div> <div class="form-label"> Email </div> <input type="input" placeholder="Email" v-model='email'> </div>
+    <div> <div class="form-label"> Password </div> <input type="password" placeholder="Password" v-model='password'> </div>
+    <input class="login" :disabled='logining' type="submit" value="Log In">
+    <div class="login-error"> {{login_error}}</div>
+  </form>
+</div> <!-- #main -->
